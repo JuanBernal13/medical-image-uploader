@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:6.0
+    container_name: medical_mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - medical_network
+
+  localstack:
+    image: localstack/localstack:latest
+    container_name: medical_localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3,dynamodb
+      - DEFAULT_REGION=us-east-1
+      - AWS_DEFAULT_REGION=us-east-1
+    volumes:
+      - ./docker/localstack/init-aws.py:/etc/localstack/init/ready.d/init-aws.py
+      - localstack_data:/var/lib/localstack
+    networks:
+      - medical_network
+
+  app:
+    build: .
+    container_name: medical_api
+    ports:
+      - "8000:8000"
+    environment:
+      - ENV=development
+      - MONGODB_URI=mongodb://mongodb:27017/medical_db
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=mock
+      - AWS_SECRET_ACCESS_KEY=mock
+      - AWS_S3_ENDPOINT_URL=http://localstack:4566
+      - AWS_DYNAMODB_ENDPOINT_URL=http://localstack:4566
+      - S3_BUCKET_NAME=medical-images
+      - DYNAMODB_TABLE_NAME=MedicalImageMetadata
+    depends_on:
+      - mongodb
+      - localstack
+    networks:
+      - medical_network
+
+volumes:
+  mongodb_data:
+  localstack_data:
+
+networks:
+  medical_network:
+    driver: bridge
