@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional, Dict, Any
-from app.domain.models import ImageMetadata, ImageReview
+from app.domain.models import ImageMetadata, ImageReview, Comment
 
 class MedicalImageUseCase(ABC):
     @abstractmethod
@@ -70,4 +70,64 @@ class MedicalImageUseCase(ABC):
 
     @abstractmethod
     async def get_system_stats(self) -> Dict[str, Any]:
+        pass
+
+    @abstractmethod
+    async def list_reviewers(self) -> List[str]:
+        pass
+
+    @abstractmethod
+    async def get_reviewer_stats(self, reviewer_name: str) -> Dict[str, Any]:
+        pass
+
+    @abstractmethod
+    async def delete_comment(self, review_id: str, comment_index: int) -> ImageReview:
+        pass
+
+    @abstractmethod
+    async def update_comment(self, review_id: str, comment_index: int, text: str) -> ImageReview:
+        pass
+
+    @abstractmethod
+    async def add_tag(self, image_id: str, tag: str) -> List[str]:
+        pass
+
+    @abstractmethod
+    async def remove_tag(self, image_id: str, tag: str) -> List[str]:
+        pass
+
+    @abstractmethod
+    async def list_images_by_tag(self, tag: str) -> List[Dict[str, Any]]:
+        pass
+
+    @abstractmethod
+    async def search_by_modality(self, modality: str) -> List[Dict[str, Any]]:
+        pass
+
+    @abstractmethod
+    async def search_by_body_part(self, body_part: str) -> List[Dict[str, Any]]:
+        pass
+
+    @abstractmethod
+    async def search_by_age(self, min_age: int, max_age: int) -> List[Dict[str, Any]]:
+        pass
+
+    @abstractmethod
+    async def reprocess_image(self, image_id: str) -> ImageMetadata:
+        pass
+
+    @abstractmethod
+    async def update_review_status(self, review_id: str, status: str) -> ImageReview:
+        pass
+
+    @abstractmethod
+    async def list_pending_reviews(self) -> List[ImageReview]:
+        pass
+
+    @abstractmethod
+    async def list_all_patients(self) -> List[str]:
+        pass
+
+    @abstractmethod
+    async def get_image_reviews_count(self, image_id: str) -> int:
         pass

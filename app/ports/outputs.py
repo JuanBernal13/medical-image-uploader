@@ -55,6 +55,22 @@ class ImageRepositoryPort(ABC):
     async def delete_image(self, image_id: str) -> None:
         pass
 
+    @abstractmethod
+    async def add_tag(self, image_id: str, tag: str) -> List[str]:
+        pass
+
+    @abstractmethod
+    async def remove_tag(self, image_id: str, tag: str) -> List[str]:
+        pass
+
+    @abstractmethod
+    async def get_images_by_tag(self, tag: str) -> List[MedicalImage]:
+        pass
+
+    @abstractmethod
+    async def get_unique_patients(self) -> List[str]:
+        pass
+
 
 class ReviewRepositoryPort(ABC):
     @abstractmethod
@@ -79,4 +95,20 @@ class ReviewRepositoryPort(ABC):
 
     @abstractmethod
     async def get_global_stats(self) -> Dict[str, Any]:
+        pass
+
+    @abstractmethod
+    async def get_unique_reviewers(self) -> List[str]:
+        pass
+
+    @abstractmethod
+    async def get_reviewer_stats(self, reviewer_name: str) -> Dict[str, Any]:
+        pass
+
+    @abstractmethod
+    async def get_reviews_by_status(self, status: str) -> List[ImageReview]:
+        pass
+
+    @abstractmethod
+    async def count_reviews_by_image(self, image_id: str) -> int:
         pass

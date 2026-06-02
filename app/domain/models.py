@@ -9,10 +9,12 @@ class Comment(BaseModel):
 
 class MedicalImage(BaseModel):
     id: str
+    patient_id: str
     filename: str
     s3_key: str
     content_type: str
     size: int
+    tags: List[str] = Field(default_factory=list)
     uploaded_at: datetime = Field(default_factory=datetime.utcnow)
 
 class ImageMetadata(BaseModel):

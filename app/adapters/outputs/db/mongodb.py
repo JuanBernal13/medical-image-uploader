@@ -18,10 +18,12 @@ class MongoDBRepository(ImageRepositoryPort, ReviewRepositoryPort):
     async def save_image(self, image: MedicalImage) -> MedicalImage:
         doc = {
             "_id": image.id,
+            "patient_id": image.patient_id,
             "filename": image.filename,
             "s3_key": image.s3_key,
             "content_type": image.content_type,
             "size": image.size,
+            "tags": image.tags,
             "uploaded_at": image.uploaded_at
         }
         await self.images_col.replace_one({"_id": image.id}, doc, upsert=True)
@@ -33,10 +35,12 @@ class MongoDBRepository(ImageRepositoryPort, ReviewRepositoryPort):
             return None
         return MedicalImage(
             id=doc["_id"],
+            patient_id=doc["patient_id"],
             filename=doc["filename"],
             s3_key=doc["s3_key"],
             content_type=doc["content_type"],
             size=doc["size"],
+            tags=doc.get("tags", []),
             uploaded_at=doc["uploaded_at"]
         )
 
@@ -46,16 +50,47 @@ class MongoDBRepository(ImageRepositoryPort, ReviewRepositoryPort):
         async for doc in cursor:
             images.append(MedicalImage(
                 id=doc["_id"],
+                patient_id=doc["patient_id"],
                 filename=doc["filename"],
                 s3_key=doc["s3_key"],
                 content_type=doc["content_type"],
                 size=doc["size"],
+                tags=doc.get("tags", []),
                 uploaded_at=doc["uploaded_at"]
             ))
         return images
 
     async def delete_image(self, image_id: str) -> None:
         await self.images_col.delete_one({"_id": image_id})
+
+    async def add_tag(self, image_id: str, tag: str) -> List[str]:
+        await self.images_col.update_one({"_id": image_id}, {"$addToSet": {"tags": tag}})
+        doc = await self.images_col.find_one({"_id": image_id})
+        return doc.get("tags", []) if doc else []
+
+    async def remove_tag(self, image_id: str, tag: str) -> List[str]:
+        await self.images_col.update_one({"_id": image_id}, {"$pull": {"tags": tag}})
+        doc = await self.images_col.find_one({"_id": image_id})
+        return doc.get("tags", []) if doc else []
+
+    async def get_images_by_tag(self, tag: str) -> List[MedicalImage]:
+        cursor = self.images_col.find({"tags": tag})
+        images = []
+        async for doc in cursor:
+            images.append(MedicalImage(
+                id=doc["_id"],
+                patient_id=doc["patient_id"],
+                filename=doc["filename"],
+                s3_key=doc["s3_key"],
+                content_type=doc["content_type"],
+                size=doc["size"],
+                tags=doc.get("tags", []),
+                uploaded_at=doc["uploaded_at"]
+            ))
+        return images
+
+    async def get_unique_patients(self) -> List[str]:
+        return await self.images_col.distinct("patient_id")
 
     async def save_review(self, review: ImageReview) -> ImageReview:
         comments_list = []
@@ -166,3 +201,56 @@ class MongoDBRepository(ImageRepositoryPort, ReviewRepositoryPort):
             "status_distribution": status_counts,
             "severity_distribution": severity_counts
         }
+
+    async def get_unique_reviewers(self) -> List[str]:
+        return await self.reviews_col.distinct("reviewer_name")
+
+    async def get_reviewer_stats(self, reviewer_name: str) -> Dict[str, Any]:
+        total = await self.reviews_col.count_documents({"reviewer_name": reviewer_name})
+        pipeline_status = [
+            {"$match": {"reviewer_name": reviewer_name}},
+            {"$group": {"_id": "$status", "count": {"$sum": 1}}}
+        ]
+        status_counts = {}
+        cursor = self.reviews_col.aggregate(pipeline_status)
+        async for doc in cursor:
+            status_counts[doc["_id"]] = doc["count"]
+
+        pipeline_severity = [
+            {"$match": {"reviewer_name": reviewer_name}},
+            {"$group": {"_id": "$severity", "count": {"$sum": 1}}}
+        ]
+        severity_counts = {}
+        cursor = self.reviews_col.aggregate(pipeline_severity)
+        async for doc in cursor:
+            severity_counts[doc["_id"]] = doc["count"]
+
+        return {
+            "reviewer_name": reviewer_name,
+            "total_reviews": total,
+            "status_distribution": status_counts,
+            "severity_distribution": severity_counts
+        }
+
+    async def get_reviews_by_status(self, status: str) -> List[ImageReview]:
+        cursor = self.reviews_col.find({"status": status})
+        reviews = []
+        async for doc in cursor:
+            comments = [
+                Comment(author=c["author"], text=c["text"], created_at=c["created_at"])
+                for c in doc.get("comments", [])
+            ]
+            reviews.append(ImageReview(
+                id=doc["_id"],
+                image_id=doc["image_id"],
+                reviewer_name=doc["reviewer_name"],
+                status=doc["status"],
+                findings=doc["findings"],
+                severity=doc["severity"],
+                comments=comments,
+                reviewed_at=doc["reviewed_at"]
+            ))
+        return reviews
+
+    async def count_reviews_by_image(self, image_id: str) -> int:
+        return await self.reviews_col.count_documents({"image_id": image_id})
