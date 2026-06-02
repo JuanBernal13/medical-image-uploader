@@ -1,6 +1,6 @@
 # Medical Image Reviewer API
 
-A high-performance backend API designed for medical image upload, metadata tracking, and clinical reviews. The project is implemented using FastAPI and strict Hexagonal (Ports and Adapters) architecture, using AWS S3 for image files, DynamoDB for metadata lookups, and MongoDB for reviews and general indexes.
+A high-performance backend API designed for medical image upload, metadata tracking, and clinical reviews. The project is implemented using FastAPI and  Hexagonal (Ports and Adapters) architecture, using AWS S3 for image files, DynamoDB for metadata lookups, and MongoDB for reviews and general indexes.
 
 ## Architecture
 
